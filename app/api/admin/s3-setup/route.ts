@@ -4,15 +4,15 @@ import { S3Client, ListBucketsCommand, HeadBucketCommand, GetBucketPolicyCommand
 
 // Initialize S3 client with environment variables
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.AWS_regioned || 'us-east-1',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.AWS_key_id || '',
+    secretAccessKey: process.env.AWS_secret_key || '',
   },
 });
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET || 'portfolio-rahul123';
-const REGION = process.env.AWS_REGION || 'us-east-1';
+const REGION = process.env.AWS_regioned || 'us-east-1';
 
 // GET: Check S3 status
 export async function GET() {
@@ -24,7 +24,7 @@ export async function GET() {
     }
     
     // Default status
-    let isConfigured = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY;
+    let isConfigured = process.env.AWS_key_id && process.env.AWS_secret_key;
     let canListBuckets = false;
     let bucketExists = false;
     let bucketPolicy = null;

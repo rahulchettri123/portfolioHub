@@ -4,10 +4,10 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 // Initialize S3 client with environment variables
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.AWS_regioned || 'us-east-1',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.AWS_key_id || '',
+    secretAccessKey: process.env.AWS_secret_key || '',
   },
 });
 
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     await s3Client.send(new PutObjectCommand(params));
     
     // Construct the S3 URL
-    const imageUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
+    const imageUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_regioned || 'us-east-1'}.amazonaws.com/${key}`;
     console.log("S3 upload successful:", imageUrl);
     
     // Save to the database

@@ -241,10 +241,10 @@ export default function S3SetupPage() {
                   Set the following variables in your .env file:
                 </p>
                 <div className="bg-muted p-2 rounded-md text-sm mt-2 font-mono">
-                  <p>AWS_REGION=us-east-1</p>
+                  <p>AWS_regioned=us-east-1</p>
                   <p>AWS_S3_BUCKET=your-bucket-name</p>
-                  <p>AWS_ACCESS_KEY_ID=your-access-key</p>
-                  <p>AWS_SECRET_ACCESS_KEY=your-secret-key</p>
+                  <p>AWS_key_id=your-access-key</p>
+                  <p>AWS_secret_key=your-secret-key</p>
                 </div>
               </div>
               
