@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-export default function LoginPage() {
+// Separate component that uses searchParams
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justRegistered = searchParams.get("registered") === "true"
@@ -54,6 +55,87 @@ export default function LoginPage() {
   }
 
   return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Welcome Back</CardTitle>
+        <CardDescription>
+          Enter your credentials to sign in to your account
+        </CardDescription>
+      </CardHeader>
+      {justRegistered && (
+        <div className="px-6 py-2 bg-green-50 text-green-700 text-sm">
+          Registration successful! Please sign in with your credentials.
+        </div>
+      )}
+      {error && (
+        <div className="px-6 py-2 bg-red-50 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="Enter your email"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Sign In"}
+          </Button>
+        </form>
+        <div className="mt-4 text-center text-sm">
+          Don't have an account?{" "}
+          <Link href="/register" className="text-primary hover:underline">
+            Register
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Loading fallback component
+function LoginFormFallback() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Welcome Back</CardTitle>
+        <CardDescription>
+          Enter your credentials to sign in to your account
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <div className="h-4 w-20 bg-muted rounded animate-pulse"></div>
+          <div className="h-10 bg-muted rounded animate-pulse"></div>
+        </div>
+        <div className="space-y-2">
+          <div className="h-4 w-20 bg-muted rounded animate-pulse"></div>
+          <div className="h-10 bg-muted rounded animate-pulse"></div>
+        </div>
+        <div className="h-10 bg-muted rounded animate-pulse"></div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
     <div className="min-h-screen flex flex-col">
       {/* Navigation */}
       <nav className="border-b">
@@ -69,57 +151,9 @@ export default function LoginPage() {
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center py-12 bg-gradient-to-b from-background to-muted/30">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Welcome Back</CardTitle>
-            <CardDescription>
-              Enter your credentials to sign in to your account
-            </CardDescription>
-          </CardHeader>
-          {justRegistered && (
-            <div className="px-6 py-2 bg-green-50 text-green-700 text-sm">
-              Registration successful! Please sign in with your credentials.
-            </div>
-          )}
-          {error && (
-            <div className="px-6 py-2 bg-red-50 text-red-700 text-sm">
-              {error}
-            </div>
-          )}
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign In"}
-              </Button>
-            </form>
-            <div className="mt-4 text-center text-sm">
-              Don't have an account?{" "}
-              <Link href="/register" className="text-primary hover:underline">
-                Register
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        <Suspense fallback={<LoginFormFallback />}>
+          <LoginForm />
+        </Suspense>
       </main>
     </div>
   )
