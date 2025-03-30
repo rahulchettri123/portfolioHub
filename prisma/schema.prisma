@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  location    String?
+  startDate   DateTime
+  endDate     DateTime?
+  current     Boolean  @default(false)
+  images      String[]
+  lessonsLearned String[]
+  techStack   String[] @default([])
+  url         String?  // Add URL field for project link
+  githubUrl   String?  // Add githubUrl field back
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relation to User
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+// Add model for storing uploaded images
+model Image {
+  id          String   @id @default(cuid())
+  url         String
+  filename    String
+  storageType String   @default("s3") // Can be "s3" or "local"
+  createdAt   DateTime @default(now())
+}
+
+// User model for authentication and profile information
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  password       String?   // Hash of the password
+  emailVerified  DateTime?
+  image          String?   // profile image
+  bio            String?   @db.Text
+  title          String?   // professional title
+  location       String?
+  githubUrl      String?
+  linkedinUrl    String?
+  twitterUrl     String?
+  websiteUrl     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  projects     Project[]
+  experiences  Experience[]
+  educations   Education[]
+  blogs        Blog[]
+}
+
+// Model for work experiences (LinkedIn-style)
+model Experience {
+  id          String    @id @default(cuid())
+  jobTitle    String
+  company     String
+  location    String?
+  description String?   @db.Text
+  startDate   DateTime
+  endDate     DateTime?
+  current     Boolean   @default(false)
+  companyLogo String?  // URL to company logo
+  order       Int       @default(0) // For controlling display order
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relation to User
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+// Model for blog posts
+model Blog {
+  id            String    @id @default(cuid())
+  title         String
+  description   String    @db.Text
+  location      String?
+  eventDate     DateTime
+  skillsLearned String[]
+  images        String[]  // Array of image URLs (max 4)
+  url           String?   // Add URL field for blog link
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relation to User
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+// Model for education
+model Education {
+  id              String    @id @default(cuid())
+  universityName  String
+  location        String
+  degree          String
+  startDate       DateTime
+  endDate         DateTime?
+  gpa             String?
+  logoImageUrl    String?
+  courses         String[]  // Array of courses taken
+  order           Int       @default(0) // For controlling display order
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relation to User
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+}

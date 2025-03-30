@@ -1,0 +1,8 @@
+i want no image uploads locally but only neon database and use aws bucket to reference it to neon database 
+
+
+just like linkedin , i want the landing page, just to direct new users to sign in and tells about the web app, now once the user signs in then he should be directed to his portfolio dashboard , can go to admin to account settings. 
+
+<Link href="/api/auth/signout?callbackUrl=/">
+  <Button variant="outline">Sign Out</Button>
+</Link> 
