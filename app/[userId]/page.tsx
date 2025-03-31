@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Github, Linkedin, Twitter, Globe, Mail, MapPin, Briefcase, Calendar, Code, ExternalLink, GraduationCap, Settings, User } from "lucide-react"
+import { Github, Twitter, Globe, Mail, MapPin, Briefcase, Calendar, Code, ExternalLink, GraduationCap, Settings, User, Linkedin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +9,8 @@ import { prisma } from "@/lib/prisma"
 import { formatDate, calculateDuration } from "@/lib/date-utils"
 import { getServerSession } from "next-auth"
 import { Metadata } from "next"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 // Mark as dynamic since we need to use headers/cookies for sessions
 export const dynamic = 'force-dynamic';
@@ -573,23 +575,21 @@ function ProjectsServerComponent({ projects }: { projects: any[] }) {
             )}
           </CardContent>
           
-          <CardFooter className="flex justify-between">
+          <CardFooter className="flex justify-start gap-2">
             {project.githubUrl ? (
               <Link href={project.githubUrl} target="_blank">
-                <Button variant="outline" size="sm">
-                  <Github className="h-4 w-4 mr-2" />
-                  GitHub
+                <Button variant="outline" size="sm" className="flex items-center justify-center w-9 h-9 rounded-full p-0">
+                  <Github className="h-5 w-5" />
                 </Button>
               </Link>
-            ) : (
-              <span></span>
-            )}
-            <Link href={project.url ? project.url : `/projects/${project.id}`} target={project.url ? "_blank" : "_self"}>
-              <Button variant="ghost" size="sm">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                {project.url ? "Visit" : "Details"}
-              </Button>
-            </Link>
+            ) : null}
+            {project.url ? (
+              <Link href={project.url} target="_blank">
+                <Button variant="outline" size="sm" className="flex items-center justify-center w-9 h-9 rounded-full p-0">
+                  <Linkedin className="h-5 w-5" />
+                </Button>
+              </Link>
+            ) : null}
           </CardFooter>
         </Card>
       ))}
@@ -663,23 +663,28 @@ function BlogServerComponent({ blogs }: { blogs: any[] }) {
             )}
           </CardContent>
           
-          <CardFooter className="flex justify-between">
-            {post.url ? (
-              <Link href={post.url} target="_blank">
-                <Button variant="outline" size="sm">
-                  <Globe className="h-4 w-4 mr-2" />
-                  Visit
+          <CardFooter className="flex justify-start gap-2">
+            {post.githubUrl ? (
+              <Link href={post.githubUrl} target="_blank">
+                <Button variant="outline" size="sm" className="flex items-center justify-center w-9 h-9 rounded-full p-0">
+                  <Github className="h-5 w-5" />
                 </Button>
               </Link>
-            ) : (
-              <span></span>
-            )}
-            <Link href={post.url ? post.url : `/blog/${post.id}`} target={post.url ? "_blank" : "_self"}>
-              <Button variant="ghost" size="sm">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                {post.url ? "Visit Source" : "Details"}
-              </Button>
-            </Link>
+            ) : null}
+            {post.linkedinUrl ? (
+              <Link href={post.linkedinUrl} target="_blank">
+                <Button variant="outline" size="sm" className="flex items-center justify-center w-9 h-9 rounded-full p-0">
+                  <Linkedin className="h-5 w-5" />
+                </Button>
+              </Link>
+            ) : null}
+            {post.url ? (
+              <Link href={post.url} target="_blank">
+                <Button variant="outline" size="sm" className="flex items-center justify-center w-9 h-9 rounded-full p-0">
+                  <Globe className="h-5 w-5" />
+                </Button>
+              </Link>
+            ) : null}
           </CardFooter>
         </Card>
       ))}

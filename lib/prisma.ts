@@ -4,8 +4,50 @@ import { PrismaClient } from '@prisma/client';
 // exhausting your database connection limit.
 // Learn more: https://pris.ly/d/help/next-js-best-practices
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+// Add error logging for Prisma
+const prismaClientSingleton = () => {
+  const client = new PrismaClient({
+    log: [
+      {
+        emit: 'event',
+        level: 'query',
+      },
+      {
+        emit: 'event',
+        level: 'error',
+      },
+      {
+        emit: 'event',
+        level: 'info',
+      },
+      {
+        emit: 'event',
+        level: 'warn',
+      },
+    ],
+  });
 
-export const prisma = globalForPrisma.prisma || new PrismaClient();
+  // Set up error logging
+  client.$on('error', (e) => {
+    console.error('Prisma error:', e);
+  });
+
+  // Log queries in development
+  if (process.env.NODE_ENV === 'development') {
+    client.$on('query', (e) => {
+      console.log('Prisma query:', e.query, e.params);
+    });
+  }
+
+  return client;
+}
+
+type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClientSingleton | undefined
+}
+
+export const prisma = globalForPrisma.prisma ?? prismaClientSingleton()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma; 

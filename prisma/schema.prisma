@@ -18,6 +18,7 @@ model Project {
   images      String[]
   lessonsLearned String[]
   techStack   String[] @default([])
+  tags        String[] @default([])
   url         String?  // Add URL field for project link
   githubUrl   String?  // Add githubUrl field back
   createdAt   DateTime @default(now())
@@ -92,6 +93,8 @@ model Blog {
   skillsLearned String[]
   images        String[]  // Array of image URLs (max 4)
   url           String?   // Add URL field for blog link
+  githubUrl     String?   // GitHub repository URL (optional)
+  linkedinUrl   String?   // LinkedIn post URL (optional)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

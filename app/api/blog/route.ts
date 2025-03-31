@@ -75,6 +75,35 @@ export async function POST(request: Request) {
       );
     }
     
+    // Validate event date
+    let eventDate: Date;
+    try {
+      eventDate = new Date(data.eventDate);
+      if (isNaN(eventDate.getTime())) {
+        throw new Error("Invalid date format");
+      }
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Invalid event date format" },
+        { status: 400 }
+      );
+    }
+    
+    // Validate and sanitize input data
+    const validatedData = {
+      title: String(data.title).trim(),
+      description: String(data.description).trim(),
+      location: data.location ? String(data.location).trim() : "",
+      eventDate,
+      skillsLearned: Array.isArray(data.skillsLearned) 
+        ? data.skillsLearned.filter(Boolean).map(item => String(item).trim()) 
+        : [],
+      // Accept URLs as-is without validation
+      url: data.url || '',
+      githubUrl: data.githubUrl || '',
+      linkedinUrl: data.linkedinUrl || '',
+    };
+    
     // Process and validate images array
     let images = [];
     if (Array.isArray(data.images)) {
@@ -93,24 +122,75 @@ export async function POST(request: Request) {
     }
     
     // Create new blog post with user association
-    const newBlogPost = await prisma.blog.create({
-      data: {
-        title: data.title,
-        description: data.description,
-        location: data.location || "",
-        eventDate: new Date(data.eventDate),
-        skillsLearned: Array.isArray(data.skillsLearned) ? data.skillsLearned : [],
-        images: images,
-        userId: user.id // Associate with current user
+    try {
+      const newBlogPost = await prisma.blog.create({
+        data: {
+          title: validatedData.title,
+          description: validatedData.description,
+          location: validatedData.location,
+          eventDate: validatedData.eventDate,
+          skillsLearned: validatedData.skillsLearned,
+          images: images,
+          // Use URLs directly without any validation or conversion
+          url: validatedData.url,
+          githubUrl: validatedData.githubUrl,
+          linkedinUrl: validatedData.linkedinUrl,
+          userId: user.id // Associate with current user
+        }
+      });
+      
+      return NextResponse.json(newBlogPost);
+    } catch (prismaError) {
+      console.error("Prisma error creating blog post:", {
+        name: prismaError.name,
+        code: prismaError.code,
+        message: prismaError.message,
+        isValidationError: prismaError.name === 'PrismaClientValidationError',
+        error: JSON.stringify(prismaError, null, 2)
+      });
+      
+      if (prismaError.name === 'PrismaClientValidationError') {
+        // Log all the data to help with debugging
+        console.error("Validation Error Details:", {
+          validatedData,
+          rawData: data,
+          error: prismaError.message,
+          stackTrace: prismaError.stack
+        });
+        
+        return NextResponse.json(
+          { error: `Database validation error. Please contact the administrator with this error code: ${Date.now()}` },
+          { status: 400 }
+        );
       }
-    });
-    
-    return NextResponse.json(newBlogPost);
+      
+      throw prismaError; // Re-throw to be caught by the outer catch block
+    }
   } catch (error) {
     console.error("Error creating blog post:", error);
+    // Provide more detailed error messages based on the error type
+    let errorMessage = "Failed to create blog post";
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      if (error.name === 'PrismaClientKnownRequestError') {
+        // This is a Prisma error with a code
+        const prismaError = error as any;
+        if (prismaError.code === 'P2002') {
+          errorMessage = "A blog post with similar unique fields already exists";
+          statusCode = 409;
+        } else {
+          errorMessage = `Database error: ${prismaError.message}`;
+        }
+      } else {
+        // Generic error with message
+        errorMessage = `Error: ${error.message}`;
+      }
+    }
+    
     return NextResponse.json(
-      { error: "Failed to create blog post" },
-      { status: 500 }
+      { error: errorMessage },
+      { status: statusCode }
     );
   }
 } 

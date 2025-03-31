@@ -71,6 +71,8 @@ type Blog = {
   skillsLearned: string[]
   images: string[]
   url?: string // Add URL field for blog links
+  githubUrl?: string
+  linkedinUrl?: string
 }
 
 // Define Project type
@@ -167,6 +169,8 @@ export default function AccountPage() {
     skillsLearned: [],
     images: [],
     url: '', // Initialize URL field
+    githubUrl: '',
+    linkedinUrl: '',
   });
   const [blogError, setBlogError] = useState<string | null>(null)
   const [blogSuccess, setBlogSuccess] = useState<string | null>(null)
@@ -910,6 +914,8 @@ export default function AccountPage() {
       skillsLearned: [],
       images: [],
       url: '', // Initialize URL field
+      githubUrl: '',
+      linkedinUrl: '',
     });
     setEditingBlogId(null);
     setImagePreviewUrls([]);
@@ -1077,10 +1083,24 @@ export default function AccountPage() {
   // Edit blog
   const handleEditBlog = (blog: Blog) => {
     // Format date for form input
-    const formattedEventDate = new Date(blog.eventDate).toISOString().split('T')[0]
+    let formattedEventDate = "";
+    try {
+      const date = new Date(blog.eventDate);
+      // Check if date is valid
+      if (!isNaN(date.getTime())) {
+        formattedEventDate = date.toISOString().split('T')[0];
+      } else {
+        console.error("Invalid date format in blog.eventDate:", blog.eventDate);
+        formattedEventDate = new Date().toISOString().split('T')[0]; // Fallback to current date
+      }
+    } catch (error) {
+      console.error("Error formatting blog eventDate:", error);
+      formattedEventDate = new Date().toISOString().split('T')[0]; // Fallback to current date
+    }
     
     console.log("Editing blog post:", blog)
     console.log("Blog images:", blog.images)
+    console.log("Formatted event date:", formattedEventDate)
     
     // Make sure we have a valid images array
     const validImages = blog.images && Array.isArray(blog.images) 
@@ -1167,7 +1187,28 @@ export default function AccountPage() {
       return
     }
     
+    // Validate event date format
+    let formattedEventDate;
     try {
+      const date = new Date(blogForm.eventDate);
+      if (isNaN(date.getTime())) {
+        setBlogError("Invalid event date format");
+        setIsSubmittingBlog(false);
+        return;
+      }
+      formattedEventDate = date.toISOString();
+    } catch (error) {
+      console.error("Error formatting event date:", error);
+      setBlogError("Invalid event date format");
+      setIsSubmittingBlog(false);
+      return;
+    }
+    
+    // We'll now accept any URL input and try to fix it on the server side
+    
+    try {
+      // No URL validation - accept all URLs as-is
+      
       let finalImages = [...blogForm.images];
       
       // First, make sure all images are uploaded and we have their URLs
@@ -1181,31 +1222,116 @@ export default function AccountPage() {
       // Make a copy of the final form data with all uploaded images
       const finalBlogData = {
         ...blogForm,
+        // Ensure eventDate is properly formatted
+        eventDate: formattedEventDate,
+        // Use URLs as-is without validation or formatting
+        url: blogForm.url,
+        githubUrl: blogForm.githubUrl,
+        linkedinUrl: blogForm.linkedinUrl,
         // Ensure images array is properly formed and contains all uploaded images
         images: finalImages.filter(url => url && (url.startsWith('http') || url.startsWith('/uploads/')))
       }
       
       console.log("Submitting blog post with images:", finalBlogData.images)
+      console.log("Event date being submitted:", finalBlogData.eventDate)
+      console.log("URLs being submitted:", {
+        original: {
+          url: blogForm.url || '',
+          githubUrl: blogForm.githubUrl || '',
+          linkedinUrl: blogForm.linkedinUrl || ''
+        },
+        formatted: {
+          url: finalBlogData.url,
+          githubUrl: finalBlogData.githubUrl,
+          linkedinUrl: finalBlogData.linkedinUrl
+        }
+      })
       
       const method = editingBlogId ? 'PUT' : 'POST'
       const url = editingBlogId 
         ? `/api/blog/${editingBlogId}` 
         : '/api/blog'
       
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(finalBlogData)
-      })
+      console.log(`Submitting blog to ${url} with method ${method}`)
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response" }))
-        throw new Error(errorData.error || `Failed to ${editingBlogId ? 'update' : 'add'} blog post`)
+      // Add better error handling with try/catch for network errors
+      let response;
+      try {
+        response = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(finalBlogData)
+        });
+        console.log(`Response status: ${response.status}, statusText: ${response.statusText}`)
+      } catch (networkError) {
+        console.error('Network error during blog submission:', networkError);
+        throw new Error(`Network error: Failed to connect to the server. Please check your connection and try again.`);
       }
       
-      const savedBlog = await response.json()
+      if (!response.ok) {
+        let errorMessage = `Failed to ${editingBlogId ? 'update' : 'add'} blog post (Status: ${response.status})`;
+        console.error(`Error response status: ${response.status}, statusText: ${response.statusText}`);
+        
+        try {
+          // Check if the response has content before trying to parse it
+          const text = await response.text();
+          console.log(`Error response body length: ${text.length}`);
+          if (text) {
+            try {
+              const errorData = JSON.parse(text);
+              console.log(`Parsed error data:`, errorData);
+              if (errorData && errorData.error) {
+                errorMessage = errorData.error;
+              }
+            } catch (jsonError) {
+              console.error('Error parsing JSON from response text:', jsonError);
+              errorMessage = `Failed to parse error response (Status: ${response.status})`;
+            }
+          } else {
+            // Empty response body
+            console.error(`Empty response body from server`);
+            errorMessage = `Server returned empty response with status: ${response.status}`;
+          }
+        } catch (parseError) {
+          console.error('Error reading response text:', parseError);
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      let savedBlog;
+      try {
+        // Clone the response before reading it as text
+        const text = await response.text();
+        if (text) {
+          try {
+            savedBlog = JSON.parse(text);
+          } catch (jsonError) {
+            console.error('Error parsing JSON from response text:', jsonError);
+            // Create a fallback blog object in case parsing fails but the API call was successful
+            savedBlog = {
+              id: editingBlogId || 'unknown',
+              ...finalBlogData, // Use the data we sent
+              updatedAt: new Date().toISOString(),
+            };
+            console.log('Using fallback blog object:', savedBlog);
+          }
+        } else {
+          throw new Error('Server returned empty response');
+        }
+      } catch (parseError) {
+        console.error('Error parsing success response:', parseError);
+        // Create a fallback blog object to prevent UI issues
+        savedBlog = {
+          id: editingBlogId || 'unknown',
+          ...finalBlogData, // Use the data we sent
+          updatedAt: new Date().toISOString(),
+        };
+        console.log('Using fallback blog object after error:', savedBlog);
+      }
+      
       console.log("Saved blog post:", savedBlog)
       
       if (editingBlogId) {
@@ -1440,11 +1566,33 @@ export default function AccountPage() {
   
   // Handle project form input changes
   const handleProjectChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
+    console.log(`Project field '${name}' changed to: `, value);
+    
+    // Special validation for URL fields
+    if ((name === 'githubUrl' || name === 'url') && value && !value.startsWith('http')) {
+      console.warn(`${name} should start with http:// or https://`);
+      // Auto-fix URLs without protocol
+      const fixedValue = `https://${value}`;
+      console.log(`Auto-fixing ${name} to: ${fixedValue}`);
+      
+      setProjectForm(prev => ({
+        ...prev,
+        [name]: fixedValue
+      }));
+      
+      // If it's a DOM input element, update the input value
+      if (e.target instanceof HTMLInputElement) {
+        e.target.value = fixedValue;
+      }
+      
+      return;
+    }
+    
     setProjectForm(prev => ({
       ...prev,
       [name]: value
-    }))
+    }));
   }
   
   // Reset project form
@@ -1625,6 +1773,8 @@ export default function AccountPage() {
       return
     }
     
+    // No URL validation - accept all URLs as is
+    
     try {
       let finalImages = [...projectImagePreviewUrls]
       
@@ -1640,16 +1790,33 @@ export default function AccountPage() {
         }
       }
       
-      // Prepare final data
+      // Prepare final data - create a clean copy to avoid issues
       const finalProjectData = {
-        ...projectForm,
-        images: finalImages.filter(url => url && (url.startsWith('http') || url.startsWith('/uploads/')))
+        title: projectForm.title,
+        description: projectForm.description,
+        location: projectForm.location || "",
+        startDate: projectForm.startDate,
+        endDate: projectForm.endDate,
+        current: projectForm.current || false,
+        images: finalImages.filter(url => url && (url.startsWith('http') || url.startsWith('/uploads/'))),
+        lessonsLearned: Array.isArray(projectForm.lessonsLearned) ? projectForm.lessonsLearned : [],
+        techStack: Array.isArray(projectForm.techStack) ? projectForm.techStack : [],
+        tags: Array.isArray(projectForm.tags) ? projectForm.tags : [],
+        // Accept URL values as-is without validation
+        url: projectForm.url || "",
+        githubUrl: projectForm.githubUrl || ""
       }
+      
+      console.log("Final project data to be submitted:", JSON.stringify(finalProjectData, null, 2));
+      console.log("Project githubUrl:", finalProjectData.githubUrl);
+      console.log("Project url:", finalProjectData.url);
       
       const method = editingProjectId ? 'PUT' : 'POST'
       const url = editingProjectId 
         ? `/api/projects/${editingProjectId}` 
         : '/api/projects'
+      
+      console.log(`Sending ${method} request to ${url}`);
       
       const response = await fetch(url, {
         method,
@@ -1659,12 +1826,57 @@ export default function AccountPage() {
         body: JSON.stringify(finalProjectData)
       })
       
+      console.log(`API Response Status: ${response.status} ${response.statusText}`);
+      console.log(`API Response Headers:`, Object.fromEntries([...response.headers.entries()]));
+      
+      // Handle error responses
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response" }))
-        throw new Error(errorData.error || `Failed to ${editingProjectId ? 'update' : 'add'} project`)
+        let errorMessage = `Failed to ${editingProjectId ? 'update' : 'add'} project`;
+        
+        try {
+          // Try to get detailed error info
+          const textResponse = await response.text();
+          console.log("Error response body:", textResponse);
+          
+          // Try to parse as JSON if possible
+          try {
+            const errorData = JSON.parse(textResponse);
+            if (errorData && errorData.error) {
+              errorMessage = errorData.error;
+              if (errorData.details) {
+                errorMessage += ': ' + errorData.details;
+              }
+              console.error("Structured error:", errorData);
+            }
+          } catch (jsonError) {
+            // Not JSON, use text as is
+            if (textResponse) {
+              errorMessage += `: ${textResponse}`;
+            }
+          }
+        } catch (textError) {
+          console.error("Could not get response text:", textError);
+          errorMessage += `: ${response.status} ${response.statusText}`;
+        }
+        
+        throw new Error(errorMessage);
       }
       
-      const savedProject = await response.json()
+      // For successful responses
+      let savedProject;
+      try {
+        const responseText = await response.text();
+        console.log("Success response body:", responseText);
+        
+        if (responseText) {
+          savedProject = JSON.parse(responseText);
+        } else {
+          throw new Error("Empty response received");
+        }
+      } catch (parseError) {
+        console.error('Error parsing success response:', parseError);
+        throw new Error('Failed to parse server response. The project may have been saved, but please refresh the page to confirm.');
+      }
       
       if (editingProjectId) {
         // Update existing project in state
@@ -1707,6 +1919,89 @@ export default function AccountPage() {
       lessonsLearned: prev.lessonsLearned.filter((_, i) => i !== index)
     }))
   }
+  
+  // Diagnostic function to test simplified project update
+  const testSimpleProjectUpdate = async () => {
+    if (!editingProjectId) {
+      console.error("No project selected for testing");
+      return;
+    }
+    
+    console.log("Testing simple project update with ID:", editingProjectId);
+    
+    try {
+      // Create a minimal data object with just title
+      const minimalData = {
+        title: projectForm.title,
+        description: projectForm.description,
+        startDate: projectForm.startDate
+      };
+      
+      console.log("Sending minimal test data:", minimalData);
+      
+      const response = await fetch(`/api/projects/${editingProjectId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(minimalData)
+      });
+      
+      console.log(`Test response status: ${response.status} ${response.statusText}`);
+      
+      const responseText = await response.text();
+      console.log("Test response body:", responseText);
+      
+      if (response.ok) {
+        console.log("Test update successful!");
+      } else {
+        console.error("Test update failed");
+      }
+    } catch (error) {
+      console.error("Error in test update:", error);
+    }
+  };
+  
+  // Add handleDeleteProject function
+  const handleDeleteProject = async (id: string) => {
+    if (!id) return;
+    
+    try {
+      setDeletingProjectId(id);
+      
+      // Confirm deletion
+      if (!confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
+        setDeletingProjectId(null);
+        return;
+      }
+      
+      console.log("Deleting project with ID:", id);
+      
+      const response = await fetch(`/api/projects/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Error deleting project:", error);
+        throw new Error(`Failed to delete project: ${error}`);
+      }
+      
+      // Remove the deleted project from state
+      setProjects(prev => prev.filter(project => project.id !== id));
+      setProjectSuccess("Project deleted successfully");
+      
+      // Reset form if we were editing the deleted project
+      if (editingProjectId === id) {
+        resetProjectForm();
+      }
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      setProjectError(error instanceof Error ? error.message : "Failed to delete project");
+    } finally {
+      setDeletingProjectId(null);
+    }
+  };
   
   if (isLoading) {
     return (
@@ -2912,6 +3207,16 @@ export default function AccountPage() {
                   >
                     Cancel
                   </Button>
+                  {editingProjectId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={testSimpleProjectUpdate}
+                      className="mx-2"
+                    >
+                      Test Update
+                    </Button>
+                  )}
                   <Button 
                     type="submit" 
                     disabled={isSubmittingProject}
@@ -3114,6 +3419,36 @@ export default function AccountPage() {
                     />
                     <p className="text-xs text-muted-foreground">
                       Link to the original article or related content
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="githubUrl">GitHub URL (Optional)</Label>
+                    <Input
+                      id="githubUrl"
+                      name="githubUrl"
+                      type="url"
+                      value={blogForm.githubUrl || ""}
+                      onChange={handleBlogChange}
+                      placeholder="https://github.com/yourusername/your-repo"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Link to related GitHub repository
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="linkedinUrl">LinkedIn URL (Optional)</Label>
+                    <Input
+                      id="linkedinUrl"
+                      name="linkedinUrl"
+                      type="url"
+                      value={blogForm.linkedinUrl || ""}
+                      onChange={handleBlogChange}
+                      placeholder="https://www.linkedin.com/posts/your-post-id"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Link to related LinkedIn post
                     </p>
                   </div>
                   

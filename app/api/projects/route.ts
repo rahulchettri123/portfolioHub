@@ -57,10 +57,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const data = await request.json()
+    let data;
+    try {
+      data = await request.json();
+    } catch (parseError) {
+      console.error("Error parsing request JSON:", parseError);
+      return NextResponse.json({ 
+        error: "Invalid JSON in request body", 
+        details: parseError instanceof Error ? parseError.message : String(parseError) 
+      }, { status: 400 });
+    }
     
     // Log the received data for debugging
     console.log("Creating project with data:", JSON.stringify(data, null, 2));
+    
+    // Log specific fields we care about
+    console.log("Project githubUrl:", data.githubUrl);
+    console.log("Project url:", data.url);
     
     // Validate required fields
     if (!data.title || !data.description || !data.startDate) {
@@ -71,10 +84,35 @@ export async function POST(request: Request) {
     }
     
     // Prepare date fields
-    const startDate = new Date(data.startDate);
+    let startDate;
+    try {
+      startDate = new Date(data.startDate);
+      if (isNaN(startDate.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid start date format", details: "Please provide a valid date" },
+          { status: 400 }
+        );
+      }
+    } catch (dateError) {
+      console.error("Error parsing start date:", dateError);
+      return NextResponse.json(
+        { error: "Invalid start date", details: "Could not parse the provided start date" },
+        { status: 400 }
+      );
+    }
+    
     let endDate = null;
     if (data.endDate && !data.current) {
-      endDate = new Date(data.endDate);
+      try {
+        endDate = new Date(data.endDate);
+        if (isNaN(endDate.getTime())) {
+          console.warn("Invalid end date format, setting to null");
+          endDate = null;
+        }
+      } catch (dateError) {
+        console.warn("Error parsing end date, setting to null:", dateError);
+        endDate = null;
+      }
     }
     
     // Process images array
@@ -91,10 +129,22 @@ export async function POST(request: Request) {
       );
     }
     
-    // Process lessonsLearned array
+    // Process lessonsLearned array - ensure it's a string array
     let lessonsLearned = [];
     if (Array.isArray(data.lessonsLearned)) {
-      lessonsLearned = data.lessonsLearned;
+      lessonsLearned = data.lessonsLearned.filter(item => typeof item === 'string');
+    }
+    
+    // Process techStack array - ensure it's a string array
+    let techStack = [];
+    if (Array.isArray(data.techStack)) {
+      techStack = data.techStack.filter(item => typeof item === 'string');
+    }
+    
+    // Process tags array - ensure it's a string array
+    let tags = [];
+    if (Array.isArray(data.tags)) {
+      tags = data.tags.filter(item => typeof item === 'string');
     }
     
     const project = await prisma.project.create({
@@ -104,9 +154,13 @@ export async function POST(request: Request) {
         location: data.location || "",
         startDate: startDate,
         endDate: endDate,
-        current: data.current || false,
+        current: Boolean(data.current),
         images: images,
         lessonsLearned: lessonsLearned,
+        techStack: techStack,
+        tags: tags,
+        url: data.url || "",
+        githubUrl: data.githubUrl || "",
         userId: user.id
       },
     })
@@ -114,7 +168,13 @@ export async function POST(request: Request) {
     return NextResponse.json(project)
   } catch (error) {
     console.error("Error creating project:", error)
-    return NextResponse.json({ error: "Failed to create project" }, { status: 500 })
+    // Log more details about the error for debugging
+    if (error instanceof Error) {
+      console.error("Error name:", error.name)
+      console.error("Error message:", error.message)
+      console.error("Error stack:", error.stack)
+    }
+    return NextResponse.json({ error: "Failed to create project", details: error instanceof Error ? error.message : String(error) }, { status: 500 })
   }
 }
 

@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ExternalLink, Github, Search, Calendar, MapPin } from "lucide-react"
+import { ExternalLink, Github, Search, Calendar, MapPin, Linkedin } from "lucide-react"
 import Link from "next/link"
 
 type Project = {
@@ -282,23 +282,21 @@ export function ProjectsList() {
                   ))}
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-between">
+              <CardFooter className="flex justify-start gap-2">
                 {project.githubUrl ? (
                   <Link href={project.githubUrl} target="_blank">
-                    <Button variant="outline" size="sm">
-                      <Github className="h-4 w-4 mr-2" />
-                      GitHub
+                    <Button variant="outline" size="sm" className="flex items-center justify-center w-9 h-9 rounded-full p-0">
+                      <Github className="h-5 w-5" />
                     </Button>
                   </Link>
-                ) : (
-                  <span></span>
-                )}
-                <Link href={`/projects/${project.id}`}>
-                  <Button variant="ghost" size="sm">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Details
-                  </Button>
-                </Link>
+                ) : null}
+                {project.demoUrl ? (
+                  <Link href={project.demoUrl} target="_blank">
+                    <Button variant="outline" size="sm" className="flex items-center justify-center w-9 h-9 rounded-full p-0">
+                      <Linkedin className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                ) : null}
               </CardFooter>
             </Card>
           ))}

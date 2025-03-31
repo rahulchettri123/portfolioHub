@@ -5,10 +5,15 @@ import {
   Calendar, 
   MapPin, 
   PenTool, 
-  Code
+  Code,
+  Github,
+  Linkedin,
+  Globe
 } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 // Define type for blog post data
 interface BlogPost {
@@ -19,6 +24,9 @@ interface BlogPost {
   eventDate: string | Date;
   skillsLearned: string[];
   images: string[];
+  url?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
 }
 
 export function BlogSection() {
@@ -229,6 +237,33 @@ export function BlogSection() {
           ) : (
             <div className="bg-gray-100 p-4 rounded text-center">
               <p className="text-gray-500">No images available for this post</p>
+            </div>
+          )}
+          
+          {/* Social Links */}
+          {(post.githubUrl || post.linkedinUrl || post.url) && (
+            <div className="flex gap-2">
+              {post.githubUrl && (
+                <Link href={post.githubUrl} target="_blank">
+                  <Button variant="outline" size="sm" className="flex items-center justify-center w-9 h-9 rounded-full p-0">
+                    <Github className="h-5 w-5" />
+                  </Button>
+                </Link>
+              )}
+              {post.linkedinUrl && (
+                <Link href={post.linkedinUrl} target="_blank">
+                  <Button variant="outline" size="sm" className="flex items-center justify-center w-9 h-9 rounded-full p-0">
+                    <Linkedin className="h-5 w-5" />
+                  </Button>
+                </Link>
+              )}
+              {post.url && (
+                <Link href={post.url} target="_blank">
+                  <Button variant="outline" size="sm" className="flex items-center justify-center w-9 h-9 rounded-full p-0">
+                    <Globe className="h-5 w-5" />
+                  </Button>
+                </Link>
+              )}
             </div>
           )}
         </div>
